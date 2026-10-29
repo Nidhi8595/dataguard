@@ -1,0 +1,22 @@
+{
+  "dataset_name": "energy_meter_readings",
+  "required_columns": [
+    "building_id",
+    "meter_id",
+    "reading_timestamp",
+    "energy_consumption",
+    "source_batch_id"
+  ],
+  "column_types": {
+    "building_id": "string",
+    "meter_id": "string",
+    "reading_timestamp": "timestamp",
+    "energy_consumption": "double",
+    "source_batch_id": "string"
+  },
+  "business_rules": {
+    "required_fields_not_null": true,
+    "energy_consumption_min": 0,
+    "unique_key": ["building_id", "meter_id", "reading_timestamp"]
+  }
+}
