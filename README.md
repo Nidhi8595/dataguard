@@ -142,6 +142,5 @@ The project will continue through these planned phases:
 
 The repository setup, initial data contract, synthetic dataset generator, and first version of the local validation engine are in place. Initial validation results have been observed, and the first pytest tests have been written.
 
-The automated tests still need to be executed and verified. The Databricks pipeline, quarantine storage, recovery workflows, CI/CD, release checks, operational tracking, and dashboards are planned for subsequent phases.
-
-DataGuard will be considered complete only after these components are implemented and their expected behavior is verified.
+I executed the initial pytest test suite, and all four tests passed successfully. The tests cover valid records, negative consumption, missing meter IDs, and duplicate readings.
+![alt text](image.png)
