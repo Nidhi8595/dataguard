@@ -138,9 +138,11 @@ The project will continue through these planned phases:
 9. Build Pipeline Health, Data Quality, and Release Safety dashboard views.
 10. Perform end-to-end verification and complete the documentation.
 
-## 11. Current Status
-
-The repository setup, initial data contract, synthetic dataset generator, and first version of the local validation engine are in place. Initial validation results have been observed, and the first pytest tests have been written.
+## 11. Testing validator
 
 I executed the initial pytest test suite, and all four tests passed successfully. The tests cover valid records, negative consumption, missing meter IDs, and duplicate readings.
 ![alt text](image.png)
+
+I expanded my pytest suite to cover eight validation scenarios, including valid records, negative consumption, missing values, duplicate readings, invalid timestamps, invalid numeric values, missing schema columns, and unexpected schema columns. These tests verify both individual record validation and incoming dataset schema compatibility.
+
+![alt text](image-1.png)
