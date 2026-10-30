@@ -1,18 +1,18 @@
 # DataGuard: A Data Reliability and Safe Deployment Platform
 
-## 1. Project Overview
+## Project Overview
 
 DataGuard is a data reliability and safe deployment project built around synthetic energy-meter data. Its goal is to identify data-quality problems, validate incoming records against predefined rules, and eventually prevent unsafe changes from affecting trusted data.
 
 The project combines Python validation, automated testing, Databricks data engineering, and release-safety checks.
 
-## 2. Problem Statement
+## Problem Statement
 
 A data pipeline can complete successfully while producing incorrect data. Missing values, duplicate readings, invalid measurements, and unexpected schema changes can affect reports and business decisions.
 
 DataGuard aims to detect these problems early, record rejection reasons, support safe reprocessing, and make pipeline behavior easier to monitor.
 
-## 3. Tech Stack
+## Tech Stack
 
 - **Python:** Data generation and validation logic.
 - **JSON:** Data contract configuration.
@@ -21,7 +21,7 @@ DataGuard aims to detect these problems early, record rejection reasons, support
 - **Git and GitHub:** Version control and project collaboration.
 - **Databricks, PySpark, and Delta Lake:** Planned data processing and storage.
 
-## 4. Project Structure
+## Project Structure
 
 ```text
 dataguard/
@@ -45,13 +45,28 @@ dataguard/
 └── requirements.txt
 ```
 
-## 5. Data Contract
+## Implementation Roadmap
+
+The project will continue through these planned phases:
+
+1. Complete project setup.
+2. Define data contracts and generate realistic test data.
+3. Complete the local validation engine and verify it with pytest.
+4. Build the Bronze, Silver, and Gold Medallion pipeline in Databricks.
+5. Implement idempotent processing and recovery.
+6. Record operational metrics, failures, and pipeline runs.
+7. Add automated testing and release-safety checks.
+8. Configure GitHub Actions and supported Databricks deployment resources.
+9. Build Pipeline Health, Data Quality, and Release Safety dashboard views.
+10. Perform end-to-end verification and complete the documentation.
+
+## 1. Data Contract
 
 I defined an initial JSON data contract in `config/data_contract.json`. It specifies the expected columns and data types, required values, non-negative energy consumption, and a composite business key consisting of building ID, meter ID, and reading timestamp.
 
 This contract provides a common reference for validating incoming records.
 
-## 6. Synthetic Test Data
+## 2. Synthetic Test Data
 
 I created `data/generate_sample_data.py` to generate 1,000 synthetic energy-meter records reproducibly using a fixed random seed.
 
@@ -59,7 +74,7 @@ The dataset includes multiple buildings, meters, timestamps, ingestion batches, 
 
 The generated dataset is stored in `data/sample/energy_readings.csv`.
 
-## 7. Local Validation Engine
+## 3. Local Validation Engine
 
 I implemented `src/dataguard/validator.py` to load the data contract and validate the generated CSV.
 
@@ -86,7 +101,7 @@ The first execution processed the generated dataset and reported:
 
 These results represent the initial local validation run. They will be verified further through automated tests and expanded implementation scenarios.
 
-## 8. Local Development Setup
+## Local Development Setup
 
 I use a Python virtual environment to isolate project dependencies.
 
@@ -117,28 +132,9 @@ $env:PYTHONPATH = "src"
 python -m dataguard.validator
 ```
 
-## 9. Automated Testing
+## Automated Testing
 
 I installed pytest and created initial tests in `tests/test_validator.py` for valid records, negative consumption, missing meter IDs, and duplicate readings.
-
-The tests have been written but have not yet been executed and verified. Automated test execution and release checks remain part of the next implementation steps.
-
-## 10. Implementation Roadmap
-
-The project will continue through these planned phases:
-
-1. Complete project setup.
-2. Define data contracts and generate realistic test data.
-3. Complete the local validation engine and verify it with pytest.
-4. Build the Bronze, Silver, and Gold Medallion pipeline in Databricks.
-5. Implement idempotent processing and recovery.
-6. Record operational metrics, failures, and pipeline runs.
-7. Add automated testing and release-safety checks.
-8. Configure GitHub Actions and supported Databricks deployment resources.
-9. Build Pipeline Health, Data Quality, and Release Safety dashboard views.
-10. Perform end-to-end verification and complete the documentation.
-
-## 11. Testing validator
 
 I executed the initial pytest test suite, and all four tests passed successfully. The tests cover valid records, negative consumption, missing meter IDs, and duplicate readings.
 ![alt text](image.png)
@@ -146,3 +142,9 @@ I executed the initial pytest test suite, and all four tests passed successfully
 I expanded my pytest suite to cover eight validation scenarios, including valid records, negative consumption, missing values, duplicate readings, invalid timestamps, invalid numeric values, missing schema columns, and unexpected schema columns. These tests verify both individual record validation and incoming dataset schema compatibility.
 
 ![alt text](image-1.png)
+
+Eight automated tests passed.
+A deliberate validation failure was detected.
+All eight tests passed after restoring the rule.
+
+This demonstrated how automated regression testing can catch unintended code changes before they affect trusted data.
