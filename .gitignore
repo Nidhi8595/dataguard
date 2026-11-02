@@ -13,3 +13,7 @@ __pycache__/
 .pytest_cache/
 .coverage
 htmlcov/
+
+data/batch_registry.db
+data/batch_registry.db-shm
+data/batch_registry.db-wal

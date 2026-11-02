@@ -18,5 +18,12 @@
     "required_fields_not_null": true,
     "energy_consumption_min": 0,
     "unique_key": ["building_id", "meter_id", "reading_timestamp"]
+  },
+  "batch_processing": {
+    "delivery_identity": "ingestion_batch_id",
+    "duplicate_delivery_detection": "content_hash",
+    "correction_policy": "new_batch_preserve_history",
+    "reading_version_key": ["building_id", "meter_id", "reading_timestamp"],
+    "latest_accepted_version_wins": true
   }
 }

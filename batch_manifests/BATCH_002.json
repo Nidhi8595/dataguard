@@ -1,0 +1,8 @@
+{
+    "ingestion_batch_id": "BATCH_002",
+    "file_name": "BATCH_002.csv",
+    "file_path": "C:\\Users\\neela\\OneDrive\\Desktop\\dataguard\\incoming\\BATCH_002.csv",
+    "content_hash": "c0793dc8fdc4a9eb40c5d1f4ccc87f9fbd46b25ea21a04578e5c7deab0711281",
+    "record_count": 1000,
+    "created_at": "2026-11-02T10:33:01.918141"
+}

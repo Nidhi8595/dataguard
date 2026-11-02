@@ -178,3 +178,40 @@ Quarantine inspection identified five records in each of the following categorie
 Gold validation confirmed 301 aggregation groups covering all 975 accepted readings, with the checked quality conditions passing.
 
 **Status:** Initial end-to-end pipeline execution and data-quality verification completed. Idempotent reprocessing, recovery, and late-arriving correction scenarios remain to be implemented and tested.
+
+## 5. Idempotency & Recovery
+
+This phase is particularly important because DataGuard should not just process data correctly once; it should also behave correctly when the same data arrives again, a pipeline fails, or a corrected batch is submitted.
+
+### Establish a reliable batch identity
+
+We should distinguish two concepts:
+
+source_batch_id : Identifies the source batch recorded in an individual reading
+ingestion_batch_id : Identifies the actual file/batch delivered to DataGuard
+
+Incoming file : energy_readings_20261030_001.csv
+DataGuard identifies the delivery : ingestion_batch_id = 20261030_001
+
+![alt text](image-2.png)
+First delivery → Process
+Same delivery again → Recognize it
+New delivery → Process as a new batch
+Corrected delivery → Process as a new version and apply the correction policy
+
+### Build the Batch Registry
+
+Now we'll create a local batch registry to establish and test our idempotency rules before implementing the equivalent Delta table in Databricks.
+We'll use SQLite locally because it provides persistent storage and transactional updates without requiring another package.
+
+### Automate our idempotency tests
+
+Now we'll convert the successful experiment into repeatable pytest tests. This ensures that future code changes cannot silently break batch registration.
+
+### Run the complete regression suite
+
+We should make sure our new registry hasn't broken the original validator tests.
+![alt text](image-3.png)
+
+- 8 original validator tests passed.
+- 7 new batch registry tests passed.
