@@ -148,3 +148,33 @@ A deliberate validation failure was detected.
 All eight tests passed after restoring the rule.
 
 This demonstrated how automated regression testing can catch unintended code changes before they affect trusted data.
+
+## 4. Lakeflow Medallion Pipeline
+
+Implemented and deployed the DataGuard Medallion pipeline using Databricks Lakeflow Spark Declarative Pipelines and Declarative Automation Bundles.
+
+### Pipeline implementation
+
+- **Bronze:** Ingested raw energy-meter CSV records from a Unity Catalog Volume.
+- **Silver:** Validated records, converted data types, detected duplicate business keys, and separated accepted and rejected records.
+- **Quarantine:** Preserved rejected records with their validation reasons.
+- **Gold:** Generated daily building-level energy consumption metrics.
+
+### Verified execution results
+
+| Dataset                 | Records |
+| ----------------------- | ------: |
+| Bronze                  |   1,000 |
+| Silver                  |     975 |
+| Quarantine              |      25 |
+| Gold aggregation groups |     301 |
+
+The local Python validator and Databricks pipeline produced matching accepted and rejected record counts.
+
+Silver validation confirmed 975 unique business keys, with no missing required identifiers, timestamps, or negative consumption values.
+
+Quarantine inspection identified five records in each of the following categories: duplicate readings, missing meter IDs, missing timestamps, negative consumption, and invalid consumption values.
+
+Gold validation confirmed 301 aggregation groups covering all 975 accepted readings, with the checked quality conditions passing.
+
+**Status:** Initial end-to-end pipeline execution and data-quality verification completed. Idempotent reprocessing, recovery, and late-arriving correction scenarios remain to be implemented and tested.
