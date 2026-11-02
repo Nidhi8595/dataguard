@@ -1,0 +1,2 @@
+building_id,meter_id,reading_timestamp,energy_consumption,source_batch_id
+B011,M106,2026-10-04T06:15:00,124.86,BATCH_004

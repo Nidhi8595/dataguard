@@ -19,7 +19,11 @@ DataGuard aims to detect these problems early, record rejection reasons, support
 - **CSV:** Synthetic energy-meter test data.
 - **pytest:** Automated testing.
 - **Git and GitHub:** Version control and project collaboration.
-- **Databricks, PySpark, and Delta Lake:** Planned data processing and storage.
+- **SQLite:** Local persistent batch registry.
+- **Databricks, PySpark, and Delta Lake:** Cloud data processing and storage.
+- **Lakeflow Spark Declarative Pipelines:** Declarative ETL implementation.
+- **Unity Catalog:** Data governance and Volume-based file storage.
+- **Declarative Automation Bundles:** Databricks resource deployment.
 
 ## Project Structure
 
@@ -29,17 +33,40 @@ dataguard/
 │   └── data_contract.json
 ├── data/
 │   ├── generate_sample_data.py
+│   ├── create_correction_batch.py
 │   └── sample/
 │       └── energy_readings.csv
-├── docs/
-├── resources/
+├── incoming/
+│   ├── BATCH_001.csv
+│   ├── BATCH_002.csv
+│   ├── BATCH_003.csv
+│   └── BATCH_004.csv
+├── batch_manifests/
+│   ├── BATCH_001.json
+│   ├── BATCH_002.json
+│   ├── BATCH_003.json
+│   └── BATCH_004.json
 ├── src/
 │   └── dataguard/
 │       ├── __init__.py
-│       └── validator.py
+│       ├── validator.py
+│       └── batch_registry.py
 ├── tests/
 │   ├── __init__.py
-│   └── test_validator.py
+│   ├── test_validator.py
+│   └── test_batch_registry.py
+├── dataguard_pipeline/
+│   ├── databricks.yml
+│   ├── pyproject.toml
+│   ├── resources/
+│   └── src/
+│       └── dataguard_pipeline_etl/
+│           ├── explorations/
+│           └── transformations/
+│               ├── bronze.py
+│               ├── silver.py
+│               └── gold.py
+├── docs/
 ├── .gitignore
 ├── README.md
 └── requirements.txt
@@ -53,7 +80,7 @@ The project will continue through these planned phases:
 2. Define data contracts and generate realistic test data.
 3. Complete the local validation engine and verify it with pytest.
 4. Build the Bronze, Silver, and Gold Medallion pipeline in Databricks.
-5. Implement idempotent processing and recovery.
+5. Implement idempotent processing, duplicate-delivery detection, and correction handling.
 6. Record operational metrics, failures, and pipeline runs.
 7. Add automated testing and release-safety checks.
 8. Configure GitHub Actions and supported Databricks deployment resources.
@@ -176,12 +203,8 @@ Silver validation confirmed 975 unique business keys, with no missing required i
 Quarantine inspection identified five records in each of the following categories: duplicate readings, missing meter IDs, missing timestamps, negative consumption, and invalid consumption values.
 
 Gold validation confirmed 301 aggregation groups covering all 975 accepted readings, with the checked quality conditions passing.
-
+![alt text](image-4.png)
 **Status:** Initial end-to-end pipeline execution and data-quality verification completed. Idempotent reprocessing, recovery, and late-arriving correction scenarios remain to be implemented and tested.
-
-## 5. Idempotency & Recovery
-
-This phase is particularly important because DataGuard should not just process data correctly once; it should also behave correctly when the same data arrives again, a pipeline fails, or a corrected batch is submitted.
 
 ### Establish a reliable batch identity
 
@@ -215,3 +238,134 @@ We should make sure our new registry hasn't broken the original validator tests.
 
 - 8 original validator tests passed.
 - 7 new batch registry tests passed.
+
+### Batch Registry Testing
+
+I extended the project with a local SQLite-based batch registry to track incoming deliveries and prevent duplicate processing.
+
+The registry uses SHA-256 content hashes to identify identical files, even when they arrive with different filenames.
+
+I added seven automated tests covering new batch registration, duplicate content detection, repeated registration, batch ID conflicts, failed-batch retries, invalid status transitions, and corrected deliveries.
+
+The complete regression suite now contains 15 passing tests:
+
+- 8 validator tests.
+- 7 batch registry tests.
+
+This verifies that the batch registry works without breaking the original validation engine.
+
+## 5. Idempotency & Recovery
+
+This phase focuses on making DataGuard reliable when the same delivery arrives again, a pipeline needs to be reprocessed, or a source system submits corrected data.
+
+### Establishing Reliable Batch Identity
+
+I distinguish two identifiers:
+
+- `source_batch_id`: Identifies the source batch recorded in an individual reading.
+- `ingestion_batch_id`: Identifies the actual file or delivery received by DataGuard.
+
+I also use SHA-256 `content_hash` values to identify identical file contents independently of their filenames.
+
+This distinction helps DataGuard identify whether an incoming file is a new delivery, a repeated delivery, or a corrected version of an existing reading.
+
+### Local SQLite Batch Registry
+
+I implemented `src/dataguard/batch_registry.py` using SQLite.
+
+The registry supports:
+
+- Registering new deliveries.
+- Detecting identical content using SHA-256 hashes.
+- Recognizing already registered batches.
+- Rejecting reuse of a batch ID with different content.
+- Tracking processing states such as RECEIVED, PROCESSING, PROCESSED, FAILED, and DUPLICATE.
+- Retrying failed batches while preventing invalid state transitions.
+
+I also added seven automated tests to verify the registry behavior.
+
+### Databricks Phase 5 Bronze Ingestion
+
+I extended the existing Lakeflow pipeline with a separate Phase 5 Bronze streaming table:
+
+`dataguard.bronze.bronze_energy_readings_phase5`
+
+I created separate directories in the Unity Catalog Volume for incoming CSV files and their JSON manifests.
+
+```text
+/Volumes/dataguard/sample_data/dataguard_files/phase5_incoming/
+
+/Volumes/dataguard/sample_data/dataguard_files/phase5_manifests/
+```
+
+I used Auto Loader to incrementally ingest incoming CSV files and enriched the Bronze records with manifest metadata, including:
+
+- `ingestion_batch_id`
+- `content_hash`
+- `record_count`
+- `batch_created_at`
+- `manifest_match_status`
+- `source_file`
+- `ingested_at`
+
+I verified that BATCH_001 and BATCH_003 were successfully matched with their manifests and had identical SHA-256 content hashes.
+
+### Databricks Batch Registry
+
+I implemented a declarative materialized view:
+
+`dataguard.bronze.batch_registry_phase5`
+
+It identifies deliveries with identical content hashes, selects a canonical delivery, and classifies subsequent identical deliveries as duplicates.
+
+The verified results are:
+
+| Batch     | Records | Status    | Duplicate of |
+| --------- | ------: | --------- | ------------ |
+| BATCH_001 |   1,000 | ACCEPTED  | NULL         |
+| BATCH_003 |   1,000 | DUPLICATE | BATCH_001    |
+
+I initially encountered inconsistent timestamp formats between the manifests. I corrected the timestamp normalization to UTC so that the intended original delivery was selected as canonical.
+
+**Implementation distinction:** The Databricks registry is currently a derived materialized view. It does not yet implement the persistent processing-state transitions available in the local SQLite registry.
+
+### Corrected Delivery Experiment
+
+I created `data/create_correction_batch.py` to generate a new delivery containing a corrected version of an existing reading without modifying the original batch.
+
+The correction scenario uses the following reading:
+
+| Field                 | Value               |
+| --------------------- | ------------------- |
+| Building ID           | B011                |
+| Meter ID              | M106                |
+| Reading timestamp     | 2026-10-04 06:15:00 |
+| Original consumption  | 138.73              |
+| Corrected consumption | 124.86              |
+
+I generated BATCH_004 with one corrected record and its corresponding JSON manifest.
+
+After uploading both files and rerunning the pipeline, I verified that:
+
+- BATCH_004 was recognized as a new delivery.
+- Its content hash was different from the original delivery.
+- Its manifest was successfully matched.
+- Its corrected reading was ingested into the Phase 5 Bronze table.
+- The registry classified it as ACCEPTED rather than DUPLICATE.
+
+The Phase 5 Bronze table processed one new record during this incremental pipeline run.
+
+### Current Phase 5 Progress
+
+At this checkpoint, I have successfully implemented and verified:
+
+- Local SQLite batch registration and idempotency tests.
+- SHA-256-based duplicate-delivery detection.
+- Separate Phase 5 Auto Loader ingestion.
+- Manifest-based batch identification.
+- Databricks duplicate-delivery classification.
+- Corrected delivery generation and ingestion.
+
+The next step is to implement reading-version history in Silver, preserving both original and corrected readings while selecting the latest accepted version for current-state reporting.
+
+**Status:** Duplicate-delivery detection and corrected-batch ingestion are verified. Reading history, current-state correction logic, and Databricks recovery behavior are still pending.

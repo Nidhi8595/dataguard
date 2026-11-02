@@ -1,0 +1,8 @@
+{
+    "ingestion_batch_id": "BATCH_004",
+    "file_name": "BATCH_004.csv",
+    "file_path": "incoming/BATCH_004.csv",
+    "content_hash": "44698b6bc24865e982799bd16c66e9c1e6e6e3cd49b3ed318a2d2ad33940d38b",
+    "record_count": 1,
+    "created_at": "2026-11-02T10:58:51.373322+00:00"
+}
