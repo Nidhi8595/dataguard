@@ -355,17 +355,65 @@ After uploading both files and rerunning the pipeline, I verified that:
 
 The Phase 5 Bronze table processed one new record during this incremental pipeline run.
 
-### Current Phase 5 Progress
+### Silver Reading History and Current-State Management
 
-At this checkpoint, I have successfully implemented and verified:
+I extended the Phase 5 pipeline with separate Silver views for reading validation, within-delivery deduplication, historical version tracking, and current-state reporting.
 
-- Local SQLite batch registration and idempotency tests.
-- SHA-256-based duplicate-delivery detection.
-- Separate Phase 5 Auto Loader ingestion.
-- Manifest-based batch identification.
-- Databricks duplicate-delivery classification.
-- Corrected delivery generation and ingestion.
+The implementation introduces two materialized views:
 
-The next step is to implement reading-version history in Silver, preserving both original and corrected readings while selecting the latest accepted version for current-state reporting.
+- `dataguard.silver.reading_history_phase5`
+- `dataguard.silver.current_energy_readings_phase5`
 
-**Status:** Duplicate-delivery detection and corrected-batch ingestion are verified. Reading history, current-state correction logic, and Databricks recovery behavior are still pending.
+The historical table preserves accepted versions of a reading, while the current-state table exposes only the latest accepted version.
+
+I used `ingestion_batch_id` in the deduplication key so that duplicate readings within the same delivery are detected without incorrectly removing corrections arriving in a different delivery.
+
+#### Verified Correction Scenario
+
+For the B011 / M106 reading, I verified:
+
+| Batch     | Energy consumption | Version | Is current |
+| --------- | -----------------: | ------: | ---------- |
+| BATCH_001 |             138.73 |       1 | false      |
+| BATCH_004 |             124.86 |       2 | true       |
+
+The historical table contains both versions, while the current-state table contains only the corrected value of 124.86.
+
+#### Verified Pipeline Results
+
+| Dataset                  | Records |
+| ------------------------ | ------: |
+| Phase 5 batch registry   |       3 |
+| Phase 5 reading history  |     976 |
+| Phase 5 current readings |     975 |
+
+BATCH_003 was excluded from reading history because it contained identical file content to BATCH_001.
+
+The original Phase 4 datasets remained unchanged:
+
+- Bronze: 1,000 records
+- Silver: 975 records
+- Quarantine: 25 records
+- Gold: 301 aggregation groups
+
+### Pipeline Rerun and Failure-Recovery Testing
+
+I tested the Phase 5 pipeline by rerunning it without uploading additional files. The existing delivery results remained unchanged, demonstrating idempotent behavior for a normal pipeline rerun using its existing checkpoint.
+
+I also verified the local SQLite registry's failure-recovery behavior.
+
+The registry supports retrying failed batches while preventing already processed batches from being processed again through invalid state transitions.
+
+#### Automated Test Results
+
+I now have 15 passing automated tests:
+
+| Test suite     | Tests passed |
+| -------------- | -----------: |
+| Data validator |            8 |
+| Batch registry |            7 |
+| Total          |           15 |
+
+The tests cover validation rules, duplicate content detection, repeated registration, batch ID conflicts, failed-batch retries, invalid status transitions, and corrected delivery registration.
+
+I used `python -m pytest` to run the tests because Windows Application Control blocked direct execution of `pytest.exe`.
